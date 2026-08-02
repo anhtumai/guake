@@ -27,6 +27,8 @@ import subprocess
 import time
 import yaml
 
+from typing import TypedDict
+
 import cairo
 
 import gi
@@ -42,14 +44,13 @@ from guake.globals import ALIGN_LEFT
 from guake.globals import ALIGN_RIGHT
 from guake.globals import ALIGN_TOP
 
-from typing import TypedDict, Optional
-
 try:
     from gi.repository import GdkX11
 except ImportError:
     GdkX11 = False
 
 log = logging.getLogger(__name__)
+
 
 class SettingsOverride(TypedDict, total=False):
     """Shape used to remember a window size the user picked by resizing.
@@ -62,8 +63,6 @@ class SettingsOverride(TypedDict, total=False):
 
     height_percentage: int
     width_percentage: int
-
-
 
 
 def gdk_is_x11_display(instance):
@@ -241,7 +240,8 @@ class FullscreenManager:
 
         # FIX to unfullscreen after show, fullscreen, hide, unfullscreen
         # (unfullscreen breaks/does not shrink window size)
-        RectCalculator.set_final_window_rect(self.settings, self.window)
+        settings_override = self.guake.settings_override if self.guake else {}
+        RectCalculator.set_final_window_rect(self.settings, self.window, settings_override)
 
     def toggle(self):
         if self.is_fullscreen():
@@ -265,7 +265,13 @@ class FullscreenManager:
 
 class RectCalculator:
     @classmethod
-    def set_final_window_rect(cls, settings, window, settings_override: SettingsOverride = {}):
+    # pylint: disable-next=dangerous-default-value
+    def set_final_window_rect(
+        cls,
+        settings,
+        window,
+        settings_override: SettingsOverride = {},
+    ):
         """Sets the final size and location of the main window of guake.
 
         The height is the window_height property, width is window_width and the
@@ -287,8 +293,12 @@ class RectCalculator:
             in screen coordinates) that was applied to the window.
         """
         # fetch settings
-        height_percents = settings_override.get("height_percentage") or settings.general.get_int("window-height")
-        width_percents = settings_override.get("width_percentage") or settings.general.get_int("window-width")
+        height_percents = settings_override.get("height_percentage") or settings.general.get_int(
+            "window-height"
+        )
+        width_percents = settings_override.get("width_percentage") or settings.general.get_int(
+            "window-width"
+        )
         halignment = settings.general.get_int("window-halignment")
         valignment = settings.general.get_int("window-valignment")
         vdisplacement = settings.general.get_int("window-vertical-displacement")

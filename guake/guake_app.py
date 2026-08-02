@@ -30,7 +30,6 @@ import uuid
 from pathlib import Path
 from threading import Thread
 from time import sleep
-from typing import TypedDict, Optional
 from urllib.parse import quote_plus
 from xml.sax.saxutils import escape as xml_escape
 
@@ -76,8 +75,8 @@ from guake.utils import FileManager
 from guake.utils import FullscreenManager
 from guake.utils import HidePrevention
 from guake.utils import RectCalculator
-from guake.utils import TabNameUtils
 from guake.utils import SettingsOverride
+from guake.utils import TabNameUtils
 from guake.utils import get_server_time
 from guake.utils import save_tabs_when_changed
 
@@ -569,10 +568,12 @@ class Guake(SimpleGladeApp):
     def on_resize_debounced(self, width, height):
         self.resize_debounce_source_id = None
 
-        workarea = RectCalculator.get_final_window_monitor(self.settings, self.window).get_workarea()
+        workarea = RectCalculator.get_final_window_monitor(
+            self.settings, self.window
+        ).get_workarea()
         self.settings_override = SettingsOverride(
-            height_percentage=round(height / workarea.height * 100),
-            width_percentage=round(width / workarea.width * 100),
+            height_percentage=min(round(height / workarea.height * 100), 100),
+            width_percentage=min(round(width / workarea.width * 100), 100),
         )
 
         log.debug("Resize settled at %sx%s -> %r", width, height, self.settings_override)
@@ -730,7 +731,9 @@ class Guake(SimpleGladeApp):
 
         # setting window in all desktops
 
-        window_rect = RectCalculator.set_final_window_rect(self.settings, self.window, self.settings_override)
+        window_rect = RectCalculator.set_final_window_rect(
+            self.settings, self.window, self.settings_override
+        )
         self.window.stick()
 
         # add tab must be called before window.show to avoid a
