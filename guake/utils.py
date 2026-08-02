@@ -42,12 +42,28 @@ from guake.globals import ALIGN_LEFT
 from guake.globals import ALIGN_RIGHT
 from guake.globals import ALIGN_TOP
 
+from typing import TypedDict, Optional
+
 try:
     from gi.repository import GdkX11
 except ImportError:
     GdkX11 = False
 
 log = logging.getLogger(__name__)
+
+class SettingsOverride(TypedDict, total=False):
+    """Shape used to remember a window size the user picked by resizing.
+
+    When the user drags the window to a new height/width, that choice is
+    stored in memory with this shape and takes priority over the persisted
+    "window-height"/"window-width" gsettings values for the rest of the
+    current session, without overwriting those settings.
+    """
+
+    height_percentage: int
+    width_percentage: int
+
+
 
 
 def gdk_is_x11_display(instance):
@@ -249,14 +265,30 @@ class FullscreenManager:
 
 class RectCalculator:
     @classmethod
-    def set_final_window_rect(cls, settings, window):
-        """Sets the final size and location of the main window of guake. The height
-        is the window_height property, width is window_width and the
+    def set_final_window_rect(cls, settings, window, settings_override: SettingsOverride = {}):
+        """Sets the final size and location of the main window of guake.
+
+        The height is the window_height property, width is window_width and the
         horizontal alignment is given by window_alignment.
+
+        Args:
+            settings: The Guake Settings object, used to read the
+                window-height, window-width, window-halignment,
+                window-valignment and displacement values from gsettings.
+            window: The Gtk.Window (main Guake window) to resize and move.
+            settings_override: Optional height/width percentages that take
+                precedence over the persisted "window-height"/"window-width"
+                gsettings values for this call only, without writing them
+                back to gsettings. Falls back entirely to the persisted
+                settings when empty.
+
+        Returns:
+            Gdk.Rectangle: the computed window rectangle (position and size,
+            in screen coordinates) that was applied to the window.
         """
         # fetch settings
-        height_percents = settings.general.get_int("window-height")
-        width_percents = settings.general.get_int("window-width")
+        height_percents = settings_override.get("height_percentage") or settings.general.get_int("window-height")
+        width_percents = settings_override.get("width_percentage") or settings.general.get_int("window-width")
         halignment = settings.general.get_int("window-halignment")
         valignment = settings.general.get_int("window-valignment")
         vdisplacement = settings.general.get_int("window-vertical-displacement")

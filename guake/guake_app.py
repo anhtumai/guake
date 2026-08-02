@@ -30,6 +30,7 @@ import uuid
 from pathlib import Path
 from threading import Thread
 from time import sleep
+from typing import TypedDict, Optional
 from urllib.parse import quote_plus
 from xml.sax.saxutils import escape as xml_escape
 
@@ -76,6 +77,7 @@ from guake.utils import FullscreenManager
 from guake.utils import HidePrevention
 from guake.utils import RectCalculator
 from guake.utils import TabNameUtils
+from guake.utils import SettingsOverride
 from guake.utils import get_server_time
 from guake.utils import save_tabs_when_changed
 
@@ -223,6 +225,11 @@ class Guake(SimpleGladeApp):
         # Debounce accel_search_terminal
         self.prev_accel_search_terminal_time = 0.0
 
+        # holds the GLib source id for the pending resize-debounce timeout
+        # used to capture resizing activities for https://github.com/Guake/guake/issues/2337
+        self.resize_debounce_source_id = None
+        self.settings_override: SettingsOverride = {}
+
         # holds the timestamp of the losefocus event
         self.losefocus_time = 0
 
@@ -237,6 +244,7 @@ class Guake(SimpleGladeApp):
 
         self.window.connect("focus-out-event", self.on_window_losefocus)
         self.window.connect("focus-in-event", self.on_window_takefocus)
+        self.window.connect("configure-event", self.on_window_configure)
 
         # Handling the delete-event of the main window to avoid
         # problems when closing it.
@@ -544,6 +552,32 @@ class Guake(SimpleGladeApp):
     def on_window_takefocus(self, window, event):
         self.takefocus_time = get_server_time(self.window)
 
+    def on_window_configure(self, window, event):
+        """Captures resizing activity for https://github.com/Guake/guake/issues/2337.
+
+        Using Debounce strategy with GLib to capture event when user has completed
+        resizing their window.
+        """
+        if self.resize_debounce_source_id is not None:
+            GLib.source_remove(self.resize_debounce_source_id)
+
+        self.resize_debounce_source_id = GLib.timeout_add(
+            300, self.on_resize_debounced, event.width, event.height
+        )
+        return False
+
+    def on_resize_debounced(self, width, height):
+        self.resize_debounce_source_id = None
+
+        workarea = RectCalculator.get_final_window_monitor(self.settings, self.window).get_workarea()
+        self.settings_override = SettingsOverride(
+            height_percentage=round(height / workarea.height * 100),
+            width_percentage=round(width / workarea.width * 100),
+        )
+
+        log.debug("Resize settled at %sx%s -> %r", width, height, self.settings_override)
+        return GLib.SOURCE_REMOVE
+
     def show_menu(self, status_icon, button, activate_time):
         """Show the tray icon menu."""
         menu = self.get_widget("tray-menu")
@@ -696,7 +730,7 @@ class Guake(SimpleGladeApp):
 
         # setting window in all desktops
 
-        window_rect = RectCalculator.set_final_window_rect(self.settings, self.window)
+        window_rect = RectCalculator.set_final_window_rect(self.settings, self.window, self.settings_override)
         self.window.stick()
 
         # add tab must be called before window.show to avoid a
@@ -714,8 +748,11 @@ class Guake(SimpleGladeApp):
         GLib.idle_add(lambda: self.window.move(window_rect.x, window_rect.y) and False)
 
         # this works around an issue in fluxbox
+        # Note: re-applies the rect directly (rather than going through
+        # triggerOnChangedValue) so this synthetic re-trigger doesn't clear
+        # settings_override the way a real "window-height" change should.
         if not self.fullscreen_manager.is_fullscreen():
-            self.settings.general.triggerOnChangedValue(self.settings.general, "window-height")
+            RectCalculator.set_final_window_rect(self.settings, self.window, self.settings_override)
 
         time = get_server_time(self.window)
 
