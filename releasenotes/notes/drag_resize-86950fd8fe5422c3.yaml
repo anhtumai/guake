@@ -1,11 +1,11 @@
 release_summary: >
   You can now resize the drop-down terminal by dragging its bottom edge,
-  similar to Windows Terminal - useful for temporarily expanding the
+  similar to Windows Terminal - handy for temporarily expanding the
   terminal to read long command output without leaving the drop-down view.
 
 features:
   - |
-    - allow resizing the drop-down terminal by dragging its bottom edge #2337
+    - Allow resizing the drop-down terminal by dragging its bottom edge (#2337).
 
 known_issues:
 

@@ -191,6 +191,21 @@ class Guake(SimpleGladeApp):
         self.mainframe = self.get_widget("mainframe")
         self.mainframe.remove(self.get_widget("notebook-teminals"))
 
+        # Window is undecorated (no WM title bar/borders), so provide a thin
+        # drag handle at the bottom edge to let users resize it manually.
+        # This is for issue: https://github.com/Guake/guake/issues/2337
+        self.resize_handle = Gtk.EventBox()
+        self.resize_handle.set_size_request(-1, 8)
+        self.resize_handle.connect(
+            "realize",
+            lambda widget: widget.get_window().set_cursor(
+                Gdk.Cursor.new_from_name(Gdk.Display.get_default(), "ns-resize")
+            ),
+        )
+        self.resize_handle.connect("button-press-event", self.on_resize_handle_button_press)
+        self.mainframe.pack_end(self.resize_handle, False, False, 0)
+        self.resize_handle.show()
+
         # Pending restore for terminal split after show-up
         #     [(RootTerminalBox, TerminaBox, panes), ...]
         self.pending_restore_page_split = []
@@ -551,6 +566,13 @@ class Guake(SimpleGladeApp):
     def on_window_takefocus(self, window, event):
         self.takefocus_time = get_server_time(self.window)
 
+    def on_resize_handle_button_press(self, widget, event):
+        if event.button == 1:
+            self.window.begin_resize_drag(
+                Gdk.WindowEdge.SOUTH, event.button, int(event.x_root), int(event.y_root), event.time
+            )
+        return True
+
     def on_window_configure(self, window, event):
         """Captures resizing activity for https://github.com/Guake/guake/issues/2337.
 
@@ -571,6 +593,10 @@ class Guake(SimpleGladeApp):
         workarea = RectCalculator.get_final_window_monitor(
             self.settings, self.window
         ).get_workarea()
+        if workarea.height <= 0 or workarea.width <= 0:
+            log.warning("Skipping resize-override update: invalid workarea %r", workarea)
+            return GLib.SOURCE_REMOVE
+
         self.settings_override = SettingsOverride(
             height_percentage=min(round(height / workarea.height * 100), 100),
             width_percentage=min(round(width / workarea.width * 100), 100),

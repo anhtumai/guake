@@ -48,6 +48,7 @@
     <property name="skip-taskbar-hint">True</property>
     <property name="skip-pager-hint">True</property>
     <property name="urgency-hint">True</property>
+    <property name="decorated">False</property>
     <child>
       <object class="GtkBox" id="mainframe">
         <property name="visible">True</property>
