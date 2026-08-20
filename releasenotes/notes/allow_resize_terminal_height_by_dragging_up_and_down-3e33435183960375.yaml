@@ -1,0 +1,32 @@
+release_summary: >
+  You can now resize the drop-down terminal by dragging its bottom edge,
+  similar to Windows Terminal - handy for temporarily expanding the
+  terminal to read long command output without leaving the drop-down view.
+
+
+features:
+  - |
+    - Allow resizing the drop-down terminal by dragging its bottom edge (#2337).
+      This is a discoverable, user-friendly alternative to the existing
+      Ctrl+Up/Ctrl+Down shortcuts, which many users may never discover on their own.
+
+known_issues:
+  - |
+    - The bottom drag handle always resizes from the top-anchored edge,
+      regardless of the "Vertical alignment" preference. If the terminal is
+      set to bottom alignment, dragging the handle may cause the window to
+      jump into a different position once the drag is released.
+
+upgrade:
+
+deprecations:
+
+security:
+
+fixes:
+
+translations:
+
+notes_for_package_maintainers:
+
+other:
