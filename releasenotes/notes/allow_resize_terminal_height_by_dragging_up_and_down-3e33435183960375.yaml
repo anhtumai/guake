@@ -12,10 +12,10 @@ features:
 
 known_issues:
   - |
-    - The bottom drag handle always resizes from the top-anchored edge,
-      regardless of the "Vertical alignment" preference. If the terminal is
-      set to bottom alignment, dragging the handle may cause the window to
-      jump into a different position once the drag is released.
+    - The drag handle only supports top-aligned windows (the default), since it
+      always resizes from the top-anchored edge. It is hidden when the
+      "Vertical alignment" preference is set to bottom, where Ctrl+Up/Ctrl+Down
+      remain the only way to resize.
 
 upgrade:
 

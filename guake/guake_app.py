@@ -52,6 +52,7 @@ from guake.about import AboutDialog
 from guake.common import gladefile
 from guake.common import pixmapfile
 from guake.dialogs import PromptQuitDialog
+from guake.globals import ALIGN_BOTTOM
 from guake.globals import MAX_TRANSPARENCY
 from guake.globals import NAME
 from guake.globals import PROMPT_ALWAYS
@@ -203,7 +204,7 @@ class Guake(SimpleGladeApp):
         self.bottom_drag_handle.connect("button-press-event", self.on_resize_handle_by_dragging)
         self.bottom_drag_handle.connect("button-release-event", self.on_resize_handle_release)
         self.mainframe.pack_end(self.bottom_drag_handle, False, False, 0)
-        self.bottom_drag_handle.show()
+        self.update_bottom_drag_handle_visibility()
 
         # Pending restore for terminal split after show-up
         #     [(RootTerminalBox, TerminaBox, panes), ...]
@@ -558,6 +559,16 @@ class Guake(SimpleGladeApp):
 
     def on_window_takefocus(self, window, event):
         self.takefocus_time = get_server_time(self.window)
+
+    def update_bottom_drag_handle_visibility(self):
+        """Hide the bottom drag handle when the window is bottom-aligned, since
+        dragging it from the top-anchored SOUTH edge would fight the bottom-anchoring
+        done by RectCalculator.set_final_window_rect.
+        """
+        if self.settings.general.get_int("window-valignment") == ALIGN_BOTTOM:
+            self.bottom_drag_handle.hide()
+        else:
+            self.bottom_drag_handle.show()
 
     def on_resize_handle_by_dragging(self, widget, event):
         """Start an interactive window resize as long as the user holds the button."""
